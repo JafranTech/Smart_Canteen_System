@@ -1,0 +1,62 @@
+
+> tmp-scaffold@0.0.0 build
+> vite build
+
+[36mvite v8.0.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 2781 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/registerSW.js                         0.13 kB
+dist/manifest.webmanifest                  0.39 kB
+dist/index.html                            1.17 kB │ gzip:   0.58 kB
+dist/assets/index-DgW5slSZ.css            36.07 kB │ gzip:   7.00 kB
+dist/assets/indian-rupee-BOSWr9CJ.js       0.28 kB │ gzip:   0.21 kB
+dist/assets/utensils-BCsDpJAY.js           1.19 kB │ gzip:   0.57 kB
+dist/assets/FraudPage-BnwBQatf.js          5.70 kB │ gzip:   1.88 kB
+dist/assets/StockPage-UFpRPVrq.js          8.26 kB │ gzip:   2.60 kB
+dist/assets/OrdersPage-BtTa1oDB.js         8.55 kB │ gzip:   2.66 kB
+dist/assets/MenuManagerPage-CeE_K5cn.js   13.70 kB │ gzip:   3.81 kB
+dist/assets/loader-circle-DWSyIBVH.js    198.03 kB │ gzip:  53.88 kB
+dist/assets/DashboardPage-BKOSf-BK.js    356.29 kB │ gzip: 105.88 kB
+dist/assets/index-C7wOKrUC.js            780.75 kB │ gzip: 240.01 kB
+
+
+PWA v1.2.0
+mode      generateSW
+precache  13 entries (1377.13 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-8c29f6e4.js
+
+
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[31m✗[39m Build failed in 818ms
+[31merror during build:
+[31mBuild failed with 1 error:
+
+Error: [vite]: Rolldown failed to resolve import "react-is" from "C:/IT/canteen/node_modules/recharts/es6/util/ReactUtils.js".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteLog (file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:32887:57)
+    at file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:32923:71
+    at onwarn (file:///C:/IT/canteen/node_modules/@vitejs/plugin-react/dist/index.js:40:7)
+    at file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:32923:28
+    at onRollupLog (file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:32918:63)
+    at onLog (file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:32688:4)
+    at file:///C:/IT/canteen/node_modules/rolldown/dist/shared/rolldown-build-4YnQkA76.mjs:49:26
+    at logger (file:///C:/IT/canteen/node_modules/rolldown/dist/shared/rolldown-build-4YnQkA76.mjs:40:3)
+    at onLog (file:///C:/IT/canteen/node_modules/rolldown/dist/shared/bindingify-input-options-Cu7pt6SZ.mjs:1945:32)[31m
+    at aggregateBindingErrorsIntoJsError (file:///C:/IT/canteen/node_modules/rolldown/dist/shared/error-CP8smW_P.mjs:48:18)
+    at unwrapBindingResult (file:///C:/IT/canteen/node_modules/rolldown/dist/shared/error-CP8smW_P.mjs:18:128)
+    at #build (file:///C:/IT/canteen/node_modules/rolldown/dist/shared/rolldown-build-4YnQkA76.mjs:3311:34)
+    at async buildEnvironment (file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:32794:64)
+    at async Object.build (file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:33216:19)
+    at async Object.buildApp (file:///C:/IT/canteen/node_modules/vite/dist/node/chunks/node.js:33213:153)
+    at async CAC.<anonymous> (file:///C:/IT/canteen/node_modules/vite/dist/node/cli.js:778:3) {
+  errors: [Getter/Setter]
+}[39m
