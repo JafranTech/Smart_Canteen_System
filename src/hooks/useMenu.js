@@ -1,7 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 export function useMenu() {
+  const queryClient = useQueryClient()
+
   const fetchMenu = async () => {
     const { data, error } = await supabase
       .from('menu_items')
@@ -21,6 +24,24 @@ export function useMenu() {
     queryKey: ['menu_items'],
     queryFn: fetchMenu,
   })
+
+  // Subscribe to realtime changes on menu_items
+  useEffect(() => {
+    const channel = supabase
+      .channel('menu_updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_items' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['menu_items'] })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [queryClient])
 
   // Extract unique categories for filter chips
   const categories = menuItems

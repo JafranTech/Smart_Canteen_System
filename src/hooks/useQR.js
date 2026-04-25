@@ -10,30 +10,75 @@ export function useQR() {
   const verifyQR = useCallback(async (token, staffId) => {
     setIsVerifying(true)
     try {
+      const trimmed = token.trim()
       // 1. Decrypt token structure
-      const decrypted = decryptToken(token)
+      const decrypted = decryptToken(trimmed)
+      
+      let queryCol = 'qr_token'
+      let queryVal = trimmed
+      let isShortId = false
+
       if (!decrypted) {
-        if (staffId) await logFraudAttempt(null, 'invalid_qr', staffId, 'Token decryption failed')
-        return { valid: false, reason: 'invalid_qr' }
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)
+        const isShort = /^[a-zA-Z0-9]{8}$/i.test(trimmed)
+        
+        if (isUUID) {
+          queryCol = 'id'
+          queryVal = trimmed
+        } else if (isShort) {
+          isShortId = true
+        } else {
+          if (staffId) await logFraudAttempt(null, 'invalid_qr', staffId, 'Token decryption failed')
+          return { valid: false, reason: 'invalid_qr' }
+        }
       }
 
-      // 2. Fetch the order corresponding to the QR Token
-      const { data: order, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          profiles (full_name, email),
-          order_items (
-            quantity,
-            unit_price,
-            menu_items (name, image_url)
-          )
-        `)
-        .eq('qr_token', token)
-        .single()
+      let order = null
+      let error = null
+
+      // 2. Fetch the order
+      if (isShortId) {
+        // Fallback for short ID: fetch active orders and filter in JS
+        const { data: activeOrders, error: activeErr } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            profiles (full_name, email),
+            order_items (
+              quantity,
+              unit_price,
+              menu_items (name, image_url)
+            )
+          `)
+          .in('status', ['paid', 'ready', 'collected'])
+          .order('created_at', { ascending: false })
+          .limit(200)
+          
+        error = activeErr
+        if (activeOrders) {
+          order = activeOrders.find(o => o.id.toLowerCase().startsWith(trimmed.toLowerCase()))
+        }
+      } else {
+        const { data: fetchedOrder, error: fetchErr } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            profiles (full_name, email),
+            order_items (
+              quantity,
+              unit_price,
+              menu_items (name, image_url)
+            )
+          `)
+          .eq(queryCol, queryVal)
+          .single()
+          
+        order = fetchedOrder
+        error = fetchErr
+      }
 
       if (error || !order) {
-        if (staffId) await logFraudAttempt(decrypted, 'invalid_qr', staffId, 'Order not found for token')
+        if (staffId) await logFraudAttempt(decrypted || trimmed, 'invalid_qr', staffId, 'Order not found for token')
         return { valid: false, reason: 'invalid_qr' }
       }
 

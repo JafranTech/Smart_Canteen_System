@@ -22,14 +22,21 @@ export default function ScannerView({ onScanSuccess }) {
     try {
       setError('')
       const config = { fps: 10, qrbox: { width: 250, height: 250 } }
-      await scannerRef.current.start(
-        { facingMode: 'environment' },
-        config,
-        (decodedText) => {
-          if (onScanSuccess) onScanSuccess(decodedText)
-        },
-        () => {} // ignore frame errors
-      )
+      const onScan = (decodedText) => {
+        if (onScanSuccess) onScanSuccess(decodedText)
+      }
+      
+      try {
+        await scannerRef.current.start({ facingMode: 'environment' }, config, onScan, () => {})
+      } catch (envErr) {
+        console.warn('Environment camera failed, falling back...', envErr)
+        const devices = await Html5Qrcode.getCameras()
+        if (devices && devices.length > 0) {
+          await scannerRef.current.start(devices[0].id, config, onScan, () => {})
+        } else {
+          throw new Error('No cameras found.')
+        }
+      }
       setIsScanning(true)
     } catch (err) {
       console.error(err)

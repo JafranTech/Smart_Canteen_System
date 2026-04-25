@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Utensils, Package, FileText } from 'lucide-react'
+import { LayoutDashboard, Utensils, Package, FileText, LogOut } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext.jsx'
 
 export default function AdminLayout({ children }) {
   const location = useLocation()
   const currentPath = location.pathname
+  const { signOut } = useAuth()
 
   const links = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -40,6 +42,15 @@ export default function AdminLayout({ children }) {
             )
           })}
         </nav>
+
+        <div className="p-4 border-t border-gray-100">
+          <button
+            onClick={signOut}
+            className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-5 h-5" /> Logout
+          </button>
+        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -51,6 +62,9 @@ export default function AdminLayout({ children }) {
             <Link to="/admin/menu" className="p-2 bg-gray-100 rounded-full text-gray-600"><Utensils className="w-5 h-5"/></Link>
             <Link to="/admin/stock" className="p-2 bg-gray-100 rounded-full text-gray-600"><Package className="w-5 h-5"/></Link>
             <Link to="/admin/orders" className="p-2 bg-gray-100 rounded-full text-gray-600"><FileText className="w-5 h-5"/></Link>
+            <button onClick={signOut} className="p-2 bg-red-100 rounded-full text-red-600 hover:bg-red-200">
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
