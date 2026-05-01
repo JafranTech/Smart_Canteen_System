@@ -93,11 +93,12 @@ export function useQR() {
         return { valid: false, reason: 'duplicate_scan', order }
       }
 
-      // Check expired (e.g., > 12 hours)
+      // Check expired (orders expire after ORDER_EXPIRY_HOURS)
+      const ORDER_EXPIRY_HOURS = 4
       const orderDate = new Date(order.created_at)
       const now = new Date()
       const diffHours = (now - orderDate) / (1000 * 60 * 60)
-      if (diffHours > 12) {
+      if (diffHours > ORDER_EXPIRY_HOURS) {
         if (staffId) await logFraudAttempt(order.id, 'expired_order', staffId, `Order is ${Math.round(diffHours)} hours old`)
         return { valid: false, reason: 'expired_order', order }
       }

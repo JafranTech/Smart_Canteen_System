@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext'
 import { signIn } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import { Mail, Lock, Loader2 } from 'lucide-react'
-import clsx from 'clsx'
 
 export default function Login() {
   const { user, profile, isLoading } = useAuth()
@@ -41,36 +40,13 @@ export default function Login() {
     const toastId = toast.loading('Authenticating...')
 
     try {
-      console.log('Starting signIn...')
       await signIn(email, password)
-      console.log('signIn successful. Handing off to AuthContext redirection.')
       toast.success('Login successful!', { id: toastId })
-      
-      // We explicitly DO NOT navigate here. 
-      // The `onAuthStateChange` listener in AuthContext will fetch the profile,
-      // update the state, and the `if (!isLoading && user && profile)` block at the top 
-      // of this component will seamlessly handle the redirection!
-      
     } catch (err) {
       console.error('[Login.jsx] Caught error:', err)
       toast.error(err.message || 'Login failed. Please check your credentials.', { id: toastId })
     } finally {
-      console.log('Finally block executing... stopping spinner.')
       setIsSubmitting(false)
-    }
-  }
-
-  // Quick-fill helpers for manual testing with verified credentials
-  const autoFill = (role) => {
-    if (role === 'student') {
-      setEmail('230081601040@crescent.education')
-      setPassword('kingjafran')
-    } else if (role === 'staff') {
-      setEmail('staff@amrita.edu')
-      setPassword('Staff@1234')
-    } else if (role === 'admin') {
-      setEmail('admin@amrita.edu')
-      setPassword('Admin@1234')
     }
   }
 
@@ -132,30 +108,6 @@ export default function Login() {
             Create Account
           </Link>
         </p>
-
-        {/* Role Hint Chips (for Testing/Dev) */}
-        <div className="mt-8">
-          <p className="text-xs text-center text-gray-400 font-medium mb-3 uppercase tracking-wider">
-            Quick Fill for Testing
-          </p>
-          <div className="flex justify-center gap-2">
-            {['student', 'staff', 'admin'].map((role) => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => autoFill(role)}
-                className={clsx(
-                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
-                  role === 'student' && "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100",
-                  role === 'staff' && "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100",
-                  role === 'admin' && "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"
-                )}
-              >
-                {role.charAt(0).toUpperCase() + role.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
 
       </div>
     </div>

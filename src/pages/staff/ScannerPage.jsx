@@ -70,7 +70,7 @@ export default function ScannerPage() {
       <header className="w-full max-w-sm flex items-center justify-between p-6">
         <h1 className="text-xl font-black tracking-tight">Scanner</h1>
         <div className="flex items-center gap-2">
-          <Link to="/staff/active-orders" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+          <Link to="/staff/orders" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
             <ArrowLeft className="w-5 h-5 text-white" />
           </Link>
           <button
