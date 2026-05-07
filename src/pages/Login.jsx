@@ -60,7 +60,7 @@ export default function Login() {
             SC
           </div>
           <h1 className="text-2xl font-bold text-night tracking-tight">Welcome Back</h1>
-          <p className="text-sm text-gray-400 mt-1">Smart Canteen — Amrita</p>
+          <p className="text-sm text-gray-400 mt-1">Smart Canteen — Crescent</p>
         </div>
 
         {/* Form */}

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase.js'
 import { format, isToday } from 'date-fns'
+import ExportPanel from '../../components/admin/ExportPanel.jsx'
 
 export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all') // all, pending, paid, ready, collected, cancelled
@@ -172,6 +173,9 @@ export default function OrdersPage() {
             </div>
           </div>
         )}
+
+        {/* Export & Archive Panel */}
+        <ExportPanel />
       </div>
     </AdminLayout>
   )

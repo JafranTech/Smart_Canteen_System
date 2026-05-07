@@ -3,109 +3,122 @@ import { supabase } from '../lib/supabase.js'
 import { decryptToken } from '../utils/qrTokens.js'
 import { logFraudAttempt } from '../utils/fraudDetection.js'
 
+// ─── Constants ───────────────────────────────────────────────
+const ORDER_EXPIRY_HOURS = 4
+
+// ─── Shared select string ────────────────────────────────────
+// profiles column is 'name' per DB schema (not full_name)
+const ORDER_SELECT = `
+  *,
+  profiles!orders_student_id_fkey (name, college_id),
+  order_items (
+    quantity,
+    unit_price,
+    menu_items (name, image_url)
+  )
+`
+
 export function useQR() {
   const [isVerifying, setIsVerifying] = useState(false)
   const [isDelivering, setIsDelivering] = useState(false)
 
-  const verifyQR = useCallback(async (token, staffId) => {
+  const verifyQR = useCallback(async (scannedToken, staffId) => {
     setIsVerifying(true)
     try {
-      const trimmed = token.trim()
-      // 1. Decrypt token structure
+      const trimmed = scannedToken.trim()
+
+      // ── Step 1: Decrypt the encrypted QR token
+      // Expected decrypted format: "{orderId}:{studentId}:{timestamp}"
       const decrypted = decryptToken(trimmed)
-      
+
       let queryCol = 'qr_token'
       let queryVal = trimmed
+      let orderId   = null  // extracted from decrypted payload
       let isShortId = false
 
-      if (!decrypted) {
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)
+      if (decrypted) {
+        // Successfully decrypted — extract orderId from payload
+        const parts = decrypted.split(':')
+        if (parts.length >= 1 && parts[0]) {
+          orderId  = parts[0]
+          queryCol = 'id'
+          queryVal = orderId
+        } else {
+          // Decrypted but malformed payload
+          if (staffId) await logFraudAttempt(null, 'invalid_qr', staffId, 'Decrypted payload malformed')
+          return { valid: false, reason: 'invalid_qr' }
+        }
+      } else {
+        // Decryption failed — check if it is a raw UUID or short display ID
+        const isUUID  = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)
         const isShort = /^[a-zA-Z0-9]{8}$/i.test(trimmed)
-        
+
         if (isUUID) {
           queryCol = 'id'
           queryVal = trimmed
         } else if (isShort) {
           isShortId = true
         } else {
-          if (staffId) await logFraudAttempt(null, 'invalid_qr', staffId, 'Token decryption failed')
+          if (staffId) await logFraudAttempt(null, 'invalid_qr', staffId, 'Token decryption failed — not UUID or short ID')
           return { valid: false, reason: 'invalid_qr' }
         }
       }
 
+      // ── Step 2: Fetch the order from Supabase
       let order = null
       let error = null
 
-      // 2. Fetch the order
       if (isShortId) {
-        // Fallback for short ID: fetch active orders and filter in JS
+        // Fallback: fetch recent active orders and match by ID prefix
         const { data: activeOrders, error: activeErr } = await supabase
           .from('orders')
-          .select(`
-            *,
-            profiles (full_name, email),
-            order_items (
-              quantity,
-              unit_price,
-              menu_items (name, image_url)
-            )
-          `)
+          .select(ORDER_SELECT)
           .in('status', ['paid', 'ready', 'collected'])
           .order('created_at', { ascending: false })
           .limit(200)
-          
+
         error = activeErr
         if (activeOrders) {
-          order = activeOrders.find(o => o.id.toLowerCase().startsWith(trimmed.toLowerCase()))
+          order = activeOrders.find((o) => o.id.toLowerCase().startsWith(trimmed.toLowerCase())) || null
         }
       } else {
         const { data: fetchedOrder, error: fetchErr } = await supabase
           .from('orders')
-          .select(`
-            *,
-            profiles (full_name, email),
-            order_items (
-              quantity,
-              unit_price,
-              menu_items (name, image_url)
-            )
-          `)
+          .select(ORDER_SELECT)
           .eq(queryCol, queryVal)
           .single()
-          
+
         order = fetchedOrder
-        error = fetchErr
+        error  = fetchErr
       }
 
       if (error || !order) {
-        if (staffId) await logFraudAttempt(decrypted || trimmed, 'invalid_qr', staffId, 'Order not found for token')
+        if (staffId) await logFraudAttempt(null, 'invalid_qr', staffId, 'Order not found for token')
         return { valid: false, reason: 'invalid_qr' }
       }
 
-      // 3. Fraud / logic bounds
+      // ── Step 3: Validate order state (fraud / logic bounds)
       if (order.status === 'collected') {
         if (staffId) await logFraudAttempt(order.id, 'duplicate_scan', staffId, 'Order already collected')
         return { valid: false, reason: 'duplicate_scan', order }
       }
-      
+
       if (order.qr_scanned_count >= 1) {
         if (staffId) await logFraudAttempt(order.id, 'duplicate_scan', staffId, 'Scanned count >= 1')
         return { valid: false, reason: 'duplicate_scan', order }
       }
 
-      // Check expired (orders expire after ORDER_EXPIRY_HOURS)
-      const ORDER_EXPIRY_HOURS = 4
+      // Expiry check
       const orderDate = new Date(order.created_at)
-      const now = new Date()
-      const diffHours = (now - orderDate) / (1000 * 60 * 60)
+      const diffHours = (Date.now() - orderDate.getTime()) / (1000 * 60 * 60)
       if (diffHours > ORDER_EXPIRY_HOURS) {
-        if (staffId) await logFraudAttempt(order.id, 'expired_order', staffId, `Order is ${Math.round(diffHours)} hours old`)
+        if (staffId) await logFraudAttempt(order.id, 'expired_order', staffId, `Order is ${Math.round(diffHours)}h old`)
         return { valid: false, reason: 'expired_order', order }
       }
 
       if (order.status !== 'paid' && order.status !== 'ready') {
         if (staffId) await logFraudAttempt(order.id, 'invalid_qr', staffId, `Invalid status: ${order.status}`)
-        return { valid: false, reason: 'invalid_qr' }
+        return { valid: false, reason: 'invalid_qr', order }
       }
 
       return { valid: true, order }

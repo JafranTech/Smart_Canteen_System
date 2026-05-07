@@ -3,18 +3,31 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { Camera, StopCircle } from 'lucide-react'
 
 // ─── Constants ───────────────────────────────────────────────
-const SCANNER_CONFIG = { fps: 10, qrbox: { width: 250, height: 250 } }
+const SCAN_COOLDOWN_MS  = 3000
+const SCANNER_CONFIG    = { fps: 10, qrbox: { width: 250, height: 250 } }
 const AUTOSTART_DELAY_MS = 300
 
 export default function ScannerView({ onScanSuccess }) {
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState('')
-  const scannerRef = useRef(null)
+  const scannerRef     = useRef(null)
+  // Debounce: prevent the same QR from firing multiple callbacks
+  const lastScannedRef  = useRef(null)
+  const scanCooldownRef = useRef(false)
 
   const startScanner = async () => {
     try {
       setError('')
       const onScan = (decodedText) => {
+        // Ignore rapid-fire duplicate scans (same QR code read multiple times per second)
+        if (scanCooldownRef.current) return
+        if (lastScannedRef.current === decodedText) return
+
+        // Lock scanner for SCAN_COOLDOWN_MS to prevent toast spam
+        scanCooldownRef.current  = true
+        lastScannedRef.current   = decodedText
+        setTimeout(() => { scanCooldownRef.current = false }, SCAN_COOLDOWN_MS)
+
         if (onScanSuccess) onScanSuccess(decodedText)
       }
 
@@ -98,7 +111,7 @@ export default function ScannerView({ onScanSuccess }) {
             type="text"
             id="e2e-qr-input"
             className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-imperial"
-            placeholder="Paste raw QR token here..."
+            placeholder="Paste encrypted QR token (from browser console)"
           />
           <button
             onClick={() => {

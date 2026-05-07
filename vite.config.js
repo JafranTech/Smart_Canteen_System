@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
-        name: 'Amrita Smart Canteen',
+        name: 'Crescent Smart Canteen',
         short_name: 'Canteen',
-        description: 'Pre-order food, skip the queue — Smart Canteen for Amrita College',
+        description: 'Pre-order food, skip the queue — Smart Canteen for Crescent College',
         theme_color: '#000F08',
         background_color: '#ffffff',
         display: 'standalone',

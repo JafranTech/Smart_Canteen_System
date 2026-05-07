@@ -3,6 +3,7 @@ import { useDashboardMetrics } from '../../hooks/useAnalytics.js'
 import StatsCard from '../../components/admin/StatsCard.jsx'
 import SalesChart from '../../components/admin/SalesChart.jsx'
 import AdminLayout from '../../components/admin/AdminLayout.jsx'
+import StorageWidget from '../../components/admin/StorageWidget.jsx'
 
 export default function DashboardPage() {
   const { data, isLoading, error } = useDashboardMetrics()
@@ -39,37 +40,39 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatsCard 
-            title="Daily Revenue" 
-            value={`₹${data.dailyRevenue.toLocaleString('en-IN')}`} 
-            icon={IndianRupee} 
-            colorClass="bg-green-500" 
-            trend={12} 
-            trendLabel="vs yesterday" 
+          <StatsCard
+            title="Daily Revenue"
+            value={`₹${data.dailyRevenue.toLocaleString('en-IN')}`}
+            icon={IndianRupee}
+            colorClass="bg-green-500"
+            trendLabel="collected today"
           />
-          <StatsCard 
-            title="Active Orders" 
-            value={data.activeOrdersCount} 
-            icon={Activity} 
-            colorClass="bg-[#FB3640]" 
-            trend={-2} 
-            trendLabel="pending right now" 
+          <StatsCard
+            title="Active Orders"
+            value={data.activeOrdersCount}
+            icon={Activity}
+            colorClass="bg-imperial"
+            trendLabel="pending pickup"
           />
-          <StatsCard 
-            title="Items Sold" 
-            value={data.totalItemsSold} 
-            icon={Utensils} 
-            colorClass="bg-blue-500" 
-            trend={8} 
-            trendLabel="items today" 
+          <StatsCard
+            title="Items Sold"
+            value={data.totalItemsSold}
+            icon={Utensils}
+            colorClass="bg-blue-500"
+            trendLabel="items today"
           />
-          <StatsCard 
-            title="Top Item" 
-            value={data.topItems[0]?.name || 'N/A'} 
-            icon={TrendingUp} 
-            colorClass="bg-amber-500" 
-            trendLabel={`${data.topItems[0]?.quantity || 0} sold today`} 
+          <StatsCard
+            title="Top Item"
+            value={data.topItems[0]?.name || 'N/A'}
+            icon={TrendingUp}
+            colorClass="bg-amber-500"
+            trendLabel={`${data.topItems[0]?.quantity || 0} sold today`}
           />
+        </div>
+
+        {/* Storage Widget */}
+        <div className="mb-8">
+          <StorageWidget />
         </div>
 
         {/* Charts & Lists Row */}

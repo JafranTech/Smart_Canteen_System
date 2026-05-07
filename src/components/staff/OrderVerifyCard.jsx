@@ -13,7 +13,7 @@ export default function OrderVerifyCard({ order }) {
       </div>
 
       <div className="p-6">
-        <h3 className="text-xl font-black text-gray-900 mb-1">{order.profiles?.full_name || 'Student'}</h3>
+        <h3 className="text-xl font-black text-gray-900 mb-1">{order.profiles?.name ?? 'Unknown Student'}</h3>
         <p className="text-sm text-gray-500 mb-6">{format(new Date(order.created_at), "MMM d, h:mm a")}</p>
 
         <div className="space-y-4">

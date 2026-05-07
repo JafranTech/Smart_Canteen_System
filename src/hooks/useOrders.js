@@ -105,7 +105,7 @@ export function useActiveOrders() {
       try {
         const { data, error } = await supabase
           .from('orders')
-          .select('*, profiles(full_name), order_items(*, menu_items(name))')
+          .select('*, profiles!orders_student_id_fkey(name, college_id), order_items(*, menu_items(name))')
           .in('status', ['paid', 'ready'])
           .order('created_at', { ascending: false })
         

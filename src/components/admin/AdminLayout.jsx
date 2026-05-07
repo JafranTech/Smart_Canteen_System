@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Utensils, Package, FileText, LogOut } from 'lucide-react'
+import { LayoutDashboard, Utensils, Package, FileText, ShieldAlert, LogOut } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 export default function AdminLayout({ children }) {
@@ -9,9 +9,10 @@ export default function AdminLayout({ children }) {
 
   const links = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/admin/menu', icon: Utensils, label: 'Menu Manager' },
-    { path: '/admin/stock', icon: Package, label: 'Stock Levels' },
-    { path: '/admin/orders', icon: FileText, label: 'Order History' },
+    { path: '/admin/menu',      icon: Utensils,         label: 'Menu Manager' },
+    { path: '/admin/stock',     icon: Package,          label: 'Stock Levels' },
+    { path: '/admin/orders',    icon: FileText,         label: 'Order History' },
+    { path: '/admin/fraud',     icon: ShieldAlert,      label: 'Fraud Logs' },
   ]
 
   return (

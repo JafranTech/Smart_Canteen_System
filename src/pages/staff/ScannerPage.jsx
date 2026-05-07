@@ -76,7 +76,7 @@ export default function ScannerPage() {
           <button
             onClick={signOut}
             aria-label="Log out"
-            className="p-2 bg-white/10 rounded-full hover:bg-red-500/20 hover:text-[#FB3640] transition-colors cursor-pointer"
+            className="p-2 bg-white/10 rounded-full hover:bg-red-500/20 hover:text-imperial transition-colors cursor-pointer"
           >
             <LogOut className="w-5 h-5" />
           </button>
@@ -89,7 +89,7 @@ export default function ScannerPage() {
         {fraudAlert && (
           <div className="absolute inset-0 bg-night/95 z-50 flex flex-col items-center justify-center animate-fade-in p-6">
             <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
-              <AlertTriangle className="w-10 h-10 text-[#FB3640]" />
+              <AlertTriangle className="w-10 h-10 text-imperial" />
             </div>
             
             <h2 className="text-2xl font-black text-white text-center mb-2 uppercase tracking-wide">

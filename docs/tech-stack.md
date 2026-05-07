@@ -145,7 +145,7 @@ export default {
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Amrita Smart Canteen',
+        name: 'Crescent Smart Canteen',
         short_name: 'Canteen',
         theme_color: '#000F08',
         background_color: '#000F08',

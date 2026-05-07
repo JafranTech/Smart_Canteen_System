@@ -102,7 +102,7 @@ export default function Register() {
             SC
           </div>
           <h1 className="text-2xl font-bold text-night tracking-tight">Create Account</h1>
-          <p className="text-sm text-gray-400 mt-1">Amrita College — Crescent</p>
+          <p className="text-sm text-gray-400 mt-1">Crescent College</p>
         </div>
 
         {/* Form */}

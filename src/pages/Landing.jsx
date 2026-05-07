@@ -60,7 +60,7 @@ export default function Landing() {
         <p className="
           text-white/60 text-xs uppercase tracking-[0.2em] font-medium mb-4
         ">
-          Amrita College Canteen
+          Crescent College Canteen
         </p>
 
         {/* Headline */}

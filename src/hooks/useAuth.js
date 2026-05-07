@@ -3,15 +3,8 @@ import { supabase } from '../lib/supabase'
 // ─── Sign In ──────────────────────────────────────────────────
 export async function signIn(email, password) {
   try {
-    const startTime = Date.now();
-    console.log('[useAuth.signIn] Firing Supabase POST token request...');
-    
-    // Call Supabase securely without rigid 8-second artificial timeout 
-    // to prevent rejecting users on slower mobile internet connections.
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    
-    console.log(`[useAuth.signIn] Network trip took ${Date.now() - startTime}ms.`);
-    
+
     if (error) throw error
 
     return { user: data.user }

@@ -27,7 +27,7 @@ When this file is loaded into a fresh project session, immediately understand th
 
 ## Project Identity
 
-**Name:** Smart Canteen — Amrita College  
+**Name:** Smart Canteen — Crescent College  
 **Type:** Progressive Web Application (PWA)  
 **Purpose:** Allow students to pre-order food before break time, pay digitally, collect food via QR verification, and eliminate crowd congestion and payment fraud at the canteen counter.
 
