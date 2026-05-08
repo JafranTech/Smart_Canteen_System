@@ -101,9 +101,11 @@ export default function ExportPanel() {
     if (isExporting) return
     setIsExporting(true)
     setHasDownloaded(false)
+    setExportedOrders([])
 
     try {
-      const orders = await fetchOrdersForExport(new Date(fromDate), new Date(toDate))
+      // Pass date strings directly — archiveUtils handles local-timezone parsing
+      const orders = await fetchOrdersForExport(fromDate, toDate)
 
       if (orders.length === 0) {
         toast.error('No collected orders found for this date range.')
@@ -127,8 +129,14 @@ export default function ExportPanel() {
   const handleArchiveConfirm = useCallback(async () => {
     setIsArchiving(true)
     try {
-      const { deletedCount } = await archiveCollectedOrders(new Date(fromDate), new Date(toDate))
-      toast.success(`${deletedCount} orders archived and removed from the database.`)
+      // Pass date strings directly — archiveUtils handles local-timezone parsing
+      const { deletedCount } = await archiveCollectedOrders(fromDate, toDate)
+      if (deletedCount === 0) {
+        toast.error('No matching collected orders found to delete. They may have already been archived.')
+        setShowModal(false)
+        return
+      }
+      toast.success(`${deletedCount} orders permanently deleted from the database.`)
       setShowModal(false)
       setHasDownloaded(false)
       setExportedOrders([])

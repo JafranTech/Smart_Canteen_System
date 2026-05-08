@@ -24,14 +24,7 @@ export default function Landing() {
       ">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <span className="
-            w-8 h-8 rounded-full
-            bg-imperial
-            flex items-center justify-center
-            text-white text-xs font-bold tracking-wide
-          ">
-            SC
-          </span>
+          <img src="/logo.png" alt="Smart Canteen Logo" className="w-8 h-8 rounded-full shadow-sm" />
           <span className="text-white font-semibold text-sm tracking-wide hidden sm:block">
             Smart Canteen
           </span>

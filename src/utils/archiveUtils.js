@@ -7,7 +7,27 @@ const SAFE_DELETE_STATUS = 'collected'
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-/** Returns start-of-day and end-of-day ISO strings for a given date */
+/**
+ * Parses a "yyyy-MM-dd" date string into a local-midnight Date object.
+ * Using new Date("yyyy-MM-dd") would parse as UTC and cause timezone drift.
+ */
+function parseDateLocal(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)   // month is 0-indexed
+}
+
+/** Returns start-of-day and end-of-day ISO strings for a date range */
+function getRangeBounds(fromDateStr, toDateStr) {
+  const start = parseDateLocal(fromDateStr)
+  start.setHours(0, 0, 0, 0)
+
+  const end = parseDateLocal(toDateStr)
+  end.setHours(23, 59, 59, 999)
+
+  return { start: start.toISOString(), end: end.toISOString() }
+}
+
+/** Returns start-of-day and end-of-day ISO strings for a given Date object */
 function getDayBounds(date) {
   const start = new Date(date)
   start.setHours(0, 0, 0, 0)
@@ -20,17 +40,14 @@ function getDayBounds(date) {
 
 /**
  * Fetches all collected orders within a date range, with full join data.
- * Used by both the export functions and the stats panel.
+ * Accepts date strings ("yyyy-MM-dd") to avoid UTC-parsing timezone bugs.
  *
- * @param {Date} fromDate - Start date (inclusive)
- * @param {Date} toDate   - End date (inclusive)
+ * @param {string} fromDateStr - "yyyy-MM-dd"
+ * @param {string} toDateStr   - "yyyy-MM-dd"
  * @returns {Promise<Object[]>} Array of order rows with profiles + order_items
  */
-export async function fetchOrdersForExport(fromDate, toDate) {
-  const start = new Date(fromDate)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(toDate)
-  end.setHours(23, 59, 59, 999)
+export async function fetchOrdersForExport(fromDateStr, toDateStr) {
+  const { start, end } = getRangeBounds(fromDateStr, toDateStr)
 
   try {
     const { data, error } = await supabase
@@ -45,8 +62,8 @@ export async function fetchOrdersForExport(fromDate, toDate) {
         )
       `)
       .eq('status', SAFE_DELETE_STATUS)
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
+      .gte('created_at', start)
+      .lte('created_at', end)
       .order('created_at', { ascending: true })
 
     if (error) throw error
@@ -86,7 +103,7 @@ export async function fetchTodayStats() {
     }
   } catch (err) {
     console.error('[archiveUtils] fetchTodayStats failed:', err)
-    throw new Error('Unable to load today\'s stats.')
+    throw new Error("Unable to load today's stats.")
   }
 }
 
@@ -94,6 +111,7 @@ export async function fetchTodayStats() {
 
 /**
  * Permanently deletes collected orders (and their items) within a date range.
+ * Accepts date strings ("yyyy-MM-dd") to avoid UTC-parsing timezone bugs.
  *
  * SAFETY INVARIANTS — must never be violated:
  *  1. Only deletes rows where status = 'collected'
@@ -101,24 +119,21 @@ export async function fetchTodayStats() {
  *  3. Deletes order_items before orders (explicit, not relying on cascade)
  *  4. Returns { deletedCount } so callers can show accurate success messages
  *
- * @param {Date} fromDate
- * @param {Date} toDate
+ * @param {string} fromDateStr - "yyyy-MM-dd"
+ * @param {string} toDateStr   - "yyyy-MM-dd"
  * @returns {Promise<{ deletedCount: number }>}
  */
-export async function archiveCollectedOrders(fromDate, toDate) {
-  const start = new Date(fromDate)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(toDate)
-  end.setHours(23, 59, 59, 999)
+export async function archiveCollectedOrders(fromDateStr, toDateStr) {
+  const { start, end } = getRangeBounds(fromDateStr, toDateStr)
 
   try {
-    // Step 1: Fetch the IDs of collected orders in range (to scope the delete precisely)
+    // Step 1: Fetch the IDs of collected orders in range (scope the delete precisely)
     const { data: targets, error: fetchErr } = await supabase
       .from('orders')
       .select('id')
       .eq('status', SAFE_DELETE_STATUS)          // ← HARDCODED SAFETY GUARD
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
+      .gte('created_at', start)
+      .lte('created_at', end)
 
     if (fetchErr) throw fetchErr
     if (!targets || targets.length === 0) {

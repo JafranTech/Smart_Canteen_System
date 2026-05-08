@@ -14,6 +14,23 @@ export async function signIn(email, password) {
   }
 }
 
+// ─── Google Sign In ───────────────────────────────────────────
+export async function signInWithGoogle() {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/login`
+      }
+    })
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.error('[useAuth] signInWithGoogle failed:', err)
+    throw new Error('Google Sign-In failed.')
+  }
+}
+
 // ─── Sign Out ─────────────────────────────────────────────────
 export async function signOut() {
   const { error } = await supabase.auth.signOut()

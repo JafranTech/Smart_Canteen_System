@@ -98,9 +98,7 @@ export default function Register() {
         
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-imperial/10 shadow-[0_0_20px_rgba(251,54,64,0.3)] flex items-center justify-center text-imperial font-black text-2xl mb-4">
-            SC
-          </div>
+          <img src="/logo.png" alt="Smart Canteen Logo" className="w-16 h-16 rounded-full shadow-[0_0_20px_rgba(251,54,64,0.3)] mb-4" />
           <h1 className="text-2xl font-bold text-night tracking-tight">Create Account</h1>
           <p className="text-sm text-gray-400 mt-1">Crescent College</p>
         </div>
