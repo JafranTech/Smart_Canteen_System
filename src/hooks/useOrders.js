@@ -41,15 +41,16 @@ export async function placeOrder(studentId, cartItems, total) {
 
       return { orderId, qrToken }
     } catch (dbError) {
-      // If DB insert fails, release the stock we locked
-      console.error('[useOrders] DB insert failed, releasing stock...', dbError)
+      // If DB insert fails after stock was locked, release it back
+      console.error('[useOrders] DB insert failed, releasing stock:', dbError)
       await releaseStock(cartItems)
       throw dbError
     }
 
   } catch (err) {
+    // Re-throw lockStock / DB errors with their specific message intact
     console.error('[useOrders] placeOrder failed:', err)
-    throw new Error('Something went wrong. Please try again.')
+    throw err instanceof Error ? err : new Error('Something went wrong. Please try again.')
   }
 }
 

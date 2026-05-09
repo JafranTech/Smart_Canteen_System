@@ -31,6 +31,22 @@ export async function signInWithGoogle() {
   }
 }
 
+// ─── Verify OTP ───────────────────────────────────────────────
+export async function verifyOtp(email, token) {
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup'
+    })
+    if (error) throw error
+    return { user: data.user }
+  } catch (err) {
+    console.error('[useAuth] verifyOtp failed:', err)
+    throw new Error(err.message || 'Invalid or expired OTP.')
+  }
+}
+
 // ─── Sign Out ─────────────────────────────────────────────────
 export async function signOut() {
   const { error } = await supabase.auth.signOut()

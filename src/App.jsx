@@ -7,6 +7,7 @@ import Spinner from './components/common/Spinner.jsx'
 import Landing from './pages/Landing.jsx'
 import Login   from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
+import VerifyOtp from './pages/VerifyOtp.jsx'
 
 // ─── Student Pages ───────────────────────────────────────────
 import MenuPage     from './pages/student/MenuPage.jsx'
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/"      element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
 
         {/* Student */}
         <Route

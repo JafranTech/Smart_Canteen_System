@@ -8,7 +8,7 @@ export function useMenu() {
   const fetchMenu = async () => {
     const { data, error } = await supabase
       .from('menu_items')
-      .select('*')
+      .select('id, name, description, price, category, image_url, stock_quantity, daily_stock_limit, daily_extra_stock, is_available')
       .eq('is_available', true)
       .order('category')
       .order('name')

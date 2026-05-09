@@ -87,11 +87,12 @@ export default function Register() {
       if (error) throw error
 
       if (!data.session) {
-        toast.success('Account created! Check your email to confirm your account before logging in.', { id: toastId, duration: 5000 })
+        toast.success('OTP sent to your email!', { id: toastId })
+        navigate('/verify-otp', { state: { email: trimmedEmail } })
       } else {
         toast.success('Account created! You can now log in.', { id: toastId })
+        navigate('/login')
       }
-      navigate('/login')
     } catch (err) {
       const message = err.message || ''
       if (message.toLowerCase().includes('already registered')) {
