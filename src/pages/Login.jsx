@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { signIn } from '../hooks/useAuth'
+import { signIn, signInWithGoogle } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import { Mail, Lock, Loader2 } from 'lucide-react'
 
@@ -12,6 +12,19 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Handle OAuth redirect errors
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash && hash.includes('error_description')) {
+      const hashParams = new URLSearchParams(hash.substring(1))
+      const errorDesc = hashParams.get('error_description')
+      if (errorDesc) {
+        toast.error(decodeURIComponent(errorDesc).replace(/\+/g, ' '), { id: 'oauth-error', duration: 5000 })
+        window.history.replaceState(null, '', window.location.pathname)
+      }
+    }
+  }, [])
 
   // If already logged in, redirect to respective dashboard
   if (!isLoading && user && profile) {
@@ -98,6 +111,31 @@ export default function Login() {
             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Log In'}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center my-6">
+          <div className="flex-1 border-t border-gray-200"></div>
+          <span className="px-3 text-sm text-gray-400 bg-white">or</span>
+          <div className="flex-1 border-t border-gray-200"></div>
+        </div>
+
+        {/* Google Login */}
+        <button
+          onClick={async () => {
+            try {
+              setIsSubmitting(true)
+              await signInWithGoogle()
+            } catch (err) {
+              toast.error(err.message)
+              setIsSubmitting(false)
+            }
+          }}
+          disabled={isSubmitting}
+          className="w-full py-3.5 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 shadow-sm hover:bg-gray-50 flex justify-center items-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+          Continue with Google
+        </button>
 
         {/* Registration Link */}
         <p className="text-center text-sm text-gray-400 mt-6">
