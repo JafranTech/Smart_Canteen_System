@@ -1,17 +1,19 @@
 import { useState, useMemo } from 'react'
-import { Search, Loader2 } from 'lucide-react'
+import { Search, Loader2, User } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useMenu } from '../../hooks/useMenu.js'
 import MenuCard from '../../components/student/MenuCard.jsx'
 import CartDrawer from '../../components/student/CartDrawer.jsx'
+import ProfileDrawer from '../../components/student/ProfileDrawer.jsx'
 import clsx from 'clsx'
 
 export default function MenuPage() {
-  const { profile, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const { menuItems, categories, isLoading, isError } = useMenu()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   // Filter items by category and search
   const filteredItems = useMemo(() => {
@@ -43,12 +45,21 @@ export default function MenuPage() {
             </span>
             <p className="text-xs text-gray-400">Hi, {profile?.name || 'Student'}</p>
           </div>
-          <button 
-            onClick={signOut}
-            className="text-xs font-medium text-gray-400 hover:text-white px-3 py-1.5 border border-white/10 rounded-full hover:bg-white/5 transition-all"
-          >
-            Sign Out
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              aria-label="Open profile"
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-300 hover:bg-white/20 hover:text-white transition-all"
+            >
+              <User className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={signOut}
+              className="text-xs font-medium text-gray-400 hover:text-white px-3 py-1.5 border border-white/10 rounded-full hover:bg-white/5 transition-all"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -114,6 +125,14 @@ export default function MenuPage() {
 
       {/* Cart Summary Drawer */}
       <CartDrawer />
+
+      {/* Profile Drawer */}
+      <ProfileDrawer
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user}
+        profile={profile}
+      />
     </div>
   )
 }
