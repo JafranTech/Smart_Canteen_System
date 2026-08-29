@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Paper and research docs
+Paper_goal/
+Paper_goal

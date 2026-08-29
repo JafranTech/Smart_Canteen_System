@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Utensils, Package, FileText, ShieldAlert, LogOut } from 'lucide-react'
+import { LayoutDashboard, Utensils, Package, FileText, ShieldAlert, LogOut, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 export default function AdminLayout({ children }) {
@@ -44,12 +44,33 @@ export default function AdminLayout({ children }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-gray-100 space-y-2">
           <button
             onClick={signOut}
             className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-colors"
           >
             <LogOut className="w-5 h-5" /> Logout
+          </button>
+          <button
+            id="admin-force-update-btn"
+            onClick={async () => {
+              try {
+                if ('serviceWorker' in navigator) {
+                  const regs = await navigator.serviceWorker.getRegistrations()
+                  await Promise.all(regs.map(r => r.unregister()))
+                }
+                if ('caches' in window) {
+                  const keys = await caches.keys()
+                  await Promise.all(keys.map(k => caches.delete(k)))
+                }
+                window.location.href = window.location.pathname + '?t=' + Date.now()
+              } catch {
+                window.location.href = window.location.pathname + '?t=' + Date.now()
+              }
+            }}
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl font-bold text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors text-sm"
+          >
+            <RefreshCw className="w-4 h-4" /> Force Update App
           </button>
         </div>
       </aside>

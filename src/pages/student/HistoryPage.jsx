@@ -25,9 +25,10 @@ export default function HistoryPage() {
     }
   }
 
-  const handleViewQR = (qrToken) => {
-    if (qrToken) {
-      localStorage.setItem('latest_qr_token', qrToken)
+  const handleViewQR = (order) => {
+    if (order) {
+      if (order.id) localStorage.setItem('latest_order_id', order.id)
+      if (order.qr_token) localStorage.setItem('latest_qr_token', order.qr_token)
       navigate('/student/qr')
     }
   }
@@ -121,7 +122,7 @@ export default function HistoryPage() {
 
                   {(order.status === 'paid' || order.status === 'ready') && order.qr_token && (
                     <button 
-                      onClick={() => handleViewQR(order.qr_token)}
+                      onClick={() => handleViewQR(order)}
                       className="mt-4 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#000F08] to-[#1a1a1a] text-white py-3 rounded-xl font-bold text-sm shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all"
                     >
                       <QrCode className="w-4 h-4" />

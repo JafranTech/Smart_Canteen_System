@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { ArrowLeft, LogOut } from 'lucide-react'
+import { QrCode, LogOut } from 'lucide-react'
 import { supabase } from '../../lib/supabase.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 
@@ -95,17 +95,20 @@ export default function ActiveOrdersPage() {
         <div className="flex items-center gap-3">
           <Link
             to="/staff/scanner"
-            className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+            className="p-2.5 bg-white/10 hover:bg-white/20 active:scale-95 rounded-2xl border border-white/15 transition-all text-white flex items-center gap-1.5 text-xs font-bold"
             aria-label="Back to scanner"
+            title="Open Scanner"
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <QrCode className="w-4 h-4 text-white" />
+            <span>Scan</span>
           </Link>
-          <h1 className="text-xl font-black tracking-tight">Active Orders</h1>
+          <h1 className="text-lg font-black tracking-tight">Active Orders</h1>
         </div>
         <button
           onClick={signOut}
           aria-label="Log out"
-          className="p-2 bg-white/10 rounded-full hover:bg-red-500/20 hover:text-imperial transition-colors"
+          title="Sign Out"
+          className="p-2.5 bg-white/10 rounded-2xl hover:bg-red-500/20 hover:text-imperial border border-white/15 transition-all"
         >
           <LogOut className="w-5 h-5" />
         </button>

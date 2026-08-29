@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2, PackageOpen, Clock, CheckCircle2, Check, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase.js'
-import { decryptToken } from '../../utils/qrTokens.js'
+import { useAuth } from '../../context/AuthContext.jsx'
 import QRCard from '../../components/student/QRCard.jsx'
 
 // ─── Constants ───────────────────────────────────────────────
@@ -46,7 +46,7 @@ function getStatusDisplay(status) {
       }
     default:
       return {
-        text:   status.toUpperCase(),
+        text:   (status || '').toUpperCase(),
         color:  'bg-gray-100 text-gray-700 border-gray-200',
         icon:   null,
         pulse:  null,
@@ -56,60 +56,99 @@ function getStatusDisplay(status) {
 
 // ─── Main Component ───────────────────────────────────────────
 export default function QRPage() {
-  const navigate      = useNavigate()
-  const [order, setOrder]       = useState(null)
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [order, setOrder] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [fromCache, setFromCache] = useState(false)
 
-  const token = localStorage.getItem('latest_qr_token')
+  const latestOrderId = localStorage.getItem('latest_order_id')
+  const latestToken = localStorage.getItem('latest_qr_token')
 
   useEffect(() => {
-    if (!token) {
-      setError('No active order found.')
-      setLoading(false)
-      return
-    }
+    let orderId = latestOrderId
 
-    const rawToken = decryptToken(token)
-    if (!rawToken) {
-      setError('Invalid or corrupted QR token.')
-      setLoading(false)
-      return
-    }
-
-    const orderId = rawToken.split(':')[0]
-
-    // ── Offline cache: render immediately from localStorage if available
-    const cached = getCachedQR(orderId)
-    if (cached) {
-      // Build a minimal order-shell from cache so QRCard can render
-      setOrder((prev) => prev || { id: orderId, qr_token: cached, status: 'paid', order_items: [] })
-      setFromCache(true)
-      setLoading(false)
-    }
-
-    // ── Fetch fresh order in background
     const fetchOrder = async () => {
       try {
+        setLoading(true)
+
+        // If we don't have an order ID in localStorage, fetch the most recent active order for the student
+        if (!orderId && user) {
+          const { data: latestActive, error: searchErr } = await supabase
+            .from('orders')
+            .select('*, order_items(*, menu_items(name))')
+            .eq('student_id', user.id)
+            .in('status', ['paid', 'ready'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (!searchErr && latestActive) {
+            orderId = latestActive.id
+            localStorage.setItem('latest_order_id', orderId)
+            if (latestActive.qr_token) {
+              localStorage.setItem('latest_qr_token', latestActive.qr_token)
+            }
+            setOrder(latestActive)
+            setLoading(false)
+            return
+          }
+        }
+
+        if (!orderId) {
+          // Check offline cache fallback
+          if (latestToken) {
+            setOrder({ id: 'OFFLINE', qr_token: latestToken, status: 'paid', order_items: [] })
+            setFromCache(true)
+            setLoading(false)
+            return
+          }
+          setError('No active order found.')
+          setLoading(false)
+          return
+        }
+
+        // 1. Fetch latest live order details from Supabase
         const { data, error: fetchErr } = await supabase
           .from('orders')
           .select('*, order_items(*, menu_items(name))')
           .eq('id', orderId)
           .single()
 
-        if (fetchErr) throw fetchErr
+        if (!fetchErr && data) {
+          if (data.qr_token) {
+            setCachedQR(orderId, data.qr_token)
+          }
+          setOrder(data)
+          setFromCache(false)
+          setError(null)
+          return
+        }
 
-        // Cache the qr_token for offline access
-        if (data?.qr_token) setCachedQR(orderId, data.qr_token)
-
-        setOrder(data)
-        setFromCache(false)
-        setError(null)
+        // 2. Fallback to cache only if offline or network error
+        const cached = getCachedQR(orderId)
+        if (cached) {
+          setOrder((prev) => prev || { id: orderId, qr_token: cached, status: 'paid', order_items: [] })
+          setFromCache(true)
+        } else if (latestToken) {
+          setOrder({ id: orderId || 'ACTIVE', qr_token: latestToken, status: 'paid', order_items: [] })
+          setFromCache(true)
+        } else {
+          setError('Failed to load order details.')
+        }
       } catch (err) {
         console.error('[QRPage] Failed to load order:', err)
-        // Only surface error if we have no cached fallback
-        if (!cached) setError('Failed to load order details.')
+        const cached = getCachedQR(orderId)
+        if (cached) {
+          setOrder((prev) => prev || { id: orderId, qr_token: cached, status: 'paid', order_items: [] })
+          setFromCache(true)
+        } else if (latestToken) {
+          setOrder({ id: orderId || 'ACTIVE', qr_token: latestToken, status: 'paid', order_items: [] })
+          setFromCache(true)
+        } else {
+          setError('Failed to load order details.')
+        }
       } finally {
         setLoading(false)
       }
@@ -117,27 +156,28 @@ export default function QRPage() {
 
     fetchOrder()
 
-    // ── Realtime: update order status live
-    const subscription = supabase
-      .channel(`order:${orderId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
-        (payload) => {
-          setOrder((prev) => (prev ? { ...prev, status: payload.new.status } : null))
+    // Realtime: update order status live
+    if (orderId) {
+      const subscription = supabase
+        .channel(`order:${orderId}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
+          (payload) => {
+            setOrder((prev) => (prev ? { ...prev, status: payload.new.status } : null))
 
-          // When order is collected, clear the cache (QR no longer valid)
-          if (payload.new.status === 'collected') {
-            removeCachedQR(orderId)
+            if (payload.new.status === 'collected') {
+              removeCachedQR(orderId)
+            }
           }
-        }
-      )
-      .subscribe()
+        )
+        .subscribe()
 
-    return () => {
-      supabase.removeChannel(subscription)
+      return () => {
+        supabase.removeChannel(subscription)
+      }
     }
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, latestOrderId, latestToken])
 
   if (loading) {
     return (
@@ -152,7 +192,7 @@ export default function QRPage() {
       <div className="min-h-screen bg-gradient-to-br from-night to-imperial flex flex-col items-center justify-center p-6 text-center text-white">
         <PackageOpen className="w-16 h-16 mb-4 opacity-50" />
         <h2 className="text-2xl font-bold mb-2">Oops!</h2>
-        <p className="text-white/80 mb-8">{error || 'Order not found.'}</p>
+        <p className="text-white/80 mb-8">{error || 'No active order found.'}</p>
         <button
           onClick={() => navigate('/student/menu')}
           className="bg-white text-imperial font-bold py-3 px-8 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all"
@@ -162,8 +202,6 @@ export default function QRPage() {
       </div>
     )
   }
-
-  const statusDisplay = getStatusDisplay(order.status)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-night to-imperial flex flex-col">

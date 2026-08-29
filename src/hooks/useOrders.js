@@ -1,28 +1,26 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { encryptToken } from '../utils/qrTokens'
 import { lockStock, releaseStock } from '../utils/stockLock'
 
-// ─── Place Order ──────────────────────────────────────────────
+// ─── Place Order (Legacy / Direct fallback with pending status) ──
 export async function placeOrder(studentId, cartItems, total) {
   try {
     const orderId  = crypto.randomUUID()
     const rawToken = `${orderId}:${studentId}:${Date.now()}`
-    const qrToken  = encryptToken(rawToken)
 
     // 1. Lock Stock First
     await lockStock(cartItems)
 
     try {
-      // 2. Insert order
+      // 2. Insert order (triggers enforce status='pending' and qr_scanned_count=0)
       const { error: orderError } = await supabase
         .from('orders')
         .insert({
           id:               orderId,
           student_id:       studentId,
           total_amount:     total,
-          status:           'paid',
-          qr_token:         qrToken,
+          status:           'pending',
+          qr_token:         rawToken,
           qr_scanned_count: 0,
         })
       if (orderError) throw orderError
@@ -39,7 +37,7 @@ export async function placeOrder(studentId, cartItems, total) {
         .insert(items)
       if (itemsError) throw itemsError
 
-      return { orderId, qrToken }
+      return { orderId, qrToken: rawToken }
     } catch (dbError) {
       // If DB insert fails after stock was locked, release it back
       console.error('[useOrders] DB insert failed, releasing stock:', dbError)
@@ -48,7 +46,6 @@ export async function placeOrder(studentId, cartItems, total) {
     }
 
   } catch (err) {
-    // Re-throw lockStock / DB errors with their specific message intact
     console.error('[useOrders] placeOrder failed:', err)
     throw err instanceof Error ? err : new Error('Something went wrong. Please try again.')
   }

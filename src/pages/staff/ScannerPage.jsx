@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { QrCode, ArrowLeft, AlertTriangle, XCircle, LogOut } from 'lucide-react'
+import { QrCode, ArrowLeft, AlertTriangle, XCircle, LogOut, UtensilsCrossed } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQR } from '../../hooks/useQR.js'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { supabase } from '../../lib/supabase.js'
 import ScannerView from '../../components/staff/ScannerView.jsx'
 import OrderVerifyCard from '../../components/staff/OrderVerifyCard.jsx'
 import DeliverButton from '../../components/staff/DeliverButton.jsx'
@@ -11,9 +13,40 @@ import DeliverButton from '../../components/staff/DeliverButton.jsx'
 export default function ScannerPage() {
   const { verifyQR, deliverOrder, isVerifying, isDelivering } = useQR()
   const { user, signOut } = useAuth() // Get current staff ID + logout
+  const queryClient = useQueryClient()
   const [scannedOrder, setScannedOrder] = useState(null)
   const [isSuccess, setIsSuccess] = useState(false)
   const [fraudAlert, setFraudAlert] = useState(null)
+
+  // Live active orders count (status: 'paid' | 'ready')
+  const { data: activeOrders } = useQuery({
+    queryKey: ['active_orders_count'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, status')
+        .in('status', ['paid', 'ready'])
+      if (error) return []
+      return data || []
+    },
+    refetchInterval: 10000 // Background polling fallback
+  })
+
+  const activeCount = activeOrders?.length || 0
+
+  // Realtime subscription to instantly update badge when new order arrives or gets collected
+  useEffect(() => {
+    const channel = supabase
+      .channel('scanner_active_badge')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['active_orders_count'] })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [queryClient])
 
   const getFraudMessage = (reason) => {
     switch (reason) {
@@ -52,6 +85,7 @@ export default function ScannerPage() {
     try {
       await deliverOrder(scannedOrder.id)
       setIsSuccess(true)
+      queryClient.invalidateQueries({ queryKey: ['active_orders_count'] })
       toast.success('Order Marked as Collected!')
     } catch (err) {
       toast.error(err.message || 'Failed to deliver order.')
@@ -68,15 +102,36 @@ export default function ScannerPage() {
     <div className="min-h-screen bg-night text-white flex flex-col items-center">
       {/* Header */}
       <header className="w-full max-w-sm flex items-center justify-between p-6">
-        <h1 className="text-xl font-black tracking-tight">Scanner</h1>
-        <div className="flex items-center gap-2">
-          <Link to="/staff/orders" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="Smart Canteen" className="w-9 h-9 rounded-full shadow-md border border-white/20" />
+          <div>
+            <h1 className="text-lg font-black tracking-tight text-white leading-tight">Staff Scanner</h1>
+            <p className="text-[11px] text-white/50 font-medium">Counter Verification</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          {/* Active Orders Queue with Amazon-style live badge */}
+          <Link 
+            to="/staff/orders" 
+            aria-label="Active Orders Queue"
+            title="View Active Orders"
+            className="relative p-2.5 bg-white/10 hover:bg-white/20 active:scale-95 rounded-2xl border border-white/15 transition-all flex items-center justify-center text-white group"
+          >
+            <UtensilsCrossed className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+            
+            {activeCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-[#FB3640] text-white text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-night shadow-md animate-pulse">
+                {activeCount > 99 ? '99+' : activeCount}
+              </span>
+            )}
           </Link>
+
           <button
             onClick={signOut}
             aria-label="Log out"
-            className="p-2 bg-white/10 rounded-full hover:bg-red-500/20 hover:text-imperial transition-colors cursor-pointer"
+            title="Sign Out"
+            className="p-2.5 bg-white/10 rounded-2xl hover:bg-red-500/20 hover:text-imperial border border-white/15 transition-all cursor-pointer text-white"
           >
             <LogOut className="w-5 h-5" />
           </button>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Loader2, PackageOpen, QrCode } from 'lucide-react'
+import { X, Loader2, PackageOpen, QrCode, RefreshCw } from 'lucide-react'
 import { format, isSameMonth, isSameYear, startOfMonth } from 'date-fns'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
@@ -108,9 +108,9 @@ function OrderCard({ order, onClose }) {
     .join(', ') || '—'
 
   const handleViewQR = () => {
-    // Write token first, then navigate — navigation unmounts drawer naturally,
-    // avoiding a race between the close transition and the route change.
-    localStorage.setItem('latest_qr_token', order.qr_token)
+    // Write order ID and token first, then navigate
+    if (order.id) localStorage.setItem('latest_order_id', order.id)
+    if (order.qr_token) localStorage.setItem('latest_qr_token', order.qr_token)
     navigate('/student/qr')
   }
 
@@ -394,6 +394,37 @@ export default function ProfileDrawer({ isOpen, onClose, user, profile }) {
           {user?.id && (
             <OrdersSection userId={user.id} isOpen={isOpen} onClose={onClose} />
           )}
+
+          {/* App Settings — Force Update */}
+          <div className="pt-4 border-t border-gray-100">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">App Settings</p>
+            <button
+              id="force-update-app-btn"
+              onClick={async () => {
+                try {
+                  // 1. Unregister all service workers
+                  if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations()
+                    await Promise.all(regs.map(r => r.unregister()))
+                  }
+                  // 2. Clear all caches
+                  if ('caches' in window) {
+                    const keys = await caches.keys()
+                    await Promise.all(keys.map(k => caches.delete(k)))
+                  }
+                  // 3. Hard reload with cache-bust
+                  window.location.href = window.location.pathname + '?t=' + Date.now()
+                } catch {
+                  window.location.href = window.location.pathname + '?t=' + Date.now()
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-gray-200 text-sm font-bold text-gray-700 hover:border-imperial hover:text-imperial hover:bg-red-50 transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Force Update App
+            </button>
+            <p className="text-[10px] text-gray-400 mt-2 text-center">Clears cache and installs the latest version</p>
+          </div>
         </div>
       </div>
     </>

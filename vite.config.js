@@ -46,6 +46,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // ── Auto-Update PWA: users always get the latest version ──
+        skipWaiting: true,           // New SW activates immediately (no waiting for tab close)
+        clientsClaim: true,          // New SW takes control of all open pages instantly
+        cleanupOutdatedCaches: true, // Old caches from previous builds are deleted
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes('/student/qr'),

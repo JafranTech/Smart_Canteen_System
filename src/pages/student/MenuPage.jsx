@@ -1,15 +1,24 @@
 import { useState, useMemo } from 'react'
-import { Search, Loader2, User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Loader2, User, QrCode } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useMenu } from '../../hooks/useMenu.js'
+import { useOrderHistory } from '../../hooks/useOrders.js'
 import MenuCard from '../../components/student/MenuCard.jsx'
 import CartDrawer from '../../components/student/CartDrawer.jsx'
 import ProfileDrawer from '../../components/student/ProfileDrawer.jsx'
 import clsx from 'clsx'
 
 export default function MenuPage() {
+  const navigate = useNavigate()
   const { user, profile, signOut } = useAuth()
   const { menuItems, categories, isLoading, isError } = useMenu()
+  const { data: orders } = useOrderHistory(user?.id)
+
+  const activeOrder = useMemo(() => {
+    if (!orders || orders.length === 0) return null
+    return orders.find((o) => o.status === 'paid' || o.status === 'ready') || null
+  }, [orders])
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
@@ -65,6 +74,38 @@ export default function MenuPage() {
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 animate-fade-in-up">
+        {/* Active Order Live Banner */}
+        {activeOrder && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-night via-[#1a1a1a] to-imperial text-white shadow-xl flex items-center justify-between border border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center flex-shrink-0">
+                <QrCode className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20">
+                    Order #{activeOrder.id.slice(0, 8).toUpperCase()}
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-300">
+                    ● {activeOrder.status === 'ready' ? 'Ready for Pickup' : 'Order Placed'}
+                  </span>
+                </div>
+                <p className="text-sm font-bold mt-1">Tap to show counter pickup QR</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (activeOrder.id) localStorage.setItem('latest_order_id', activeOrder.id)
+                if (activeOrder.qr_token) localStorage.setItem('latest_qr_token', activeOrder.qr_token)
+                navigate('/student/qr')
+              }}
+              className="bg-white text-imperial text-xs font-black px-4 py-2.5 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all whitespace-nowrap ml-3"
+            >
+              View QR
+            </button>
+          </div>
+        )}
+
         {/* Search */}
         <div className="relative mb-6">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

@@ -3,10 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Minus, Plus, ShoppingBag, ShieldCheck } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { placeOrder } from '../../hooks/useOrders.js'
+import { supabase } from '../../lib/supabase.js'
 import PaymentModal from '../../components/student/PaymentModal.jsx'
 import toast from 'react-hot-toast'
-import clsx from 'clsx'
+
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 export default function CheckoutPage() {
   const { items, totalPrice, updateQty, removeItem, clearCart } = useCart()
@@ -49,19 +62,109 @@ export default function CheckoutPage() {
 
     try {
       setIsProcessing(true)
-      const { qrToken } = await placeOrder(user.id, items, totalPrice)
-      
-      // Store token for offline access
-      localStorage.setItem('latest_qr_token', qrToken)
-      
-      toast.success('Order placed successfully!')
-      clearCart()
-      navigate('/student/qr')
+
+      // 1. Load Razorpay SDK
+      const scriptLoaded = await loadRazorpayScript()
+      if (!scriptLoaded) {
+        throw new Error('Failed to load Razorpay SDK. Please check your internet connection.')
+      }
+
+      // 2. Create Razorpay order via Edge Function
+      const { data: orderData, error: orderErr } = await supabase.functions.invoke('create-razorpay-order', {
+        body: { totalAmount: totalPrice },
+      })
+
+      if (orderErr || !orderData?.razorpay_order_id) {
+        let errMsg = orderData?.error || orderErr?.message || 'Could not initiate payment.'
+        if (orderErr && orderErr.context) {
+          try {
+            const body = await orderErr.context.json()
+            if (body?.error) errMsg = body.error
+            if (body?.authError) errMsg += ` (${body.authError})`
+          } catch {}
+        }
+        throw new Error(errMsg)
+      }
+
+      const razorpayKey = orderData.key_id || import.meta.env.VITE_RAZORPAY_KEY_ID
+
+      // 3. Configure Razorpay Checkout options
+      const options = {
+        key: razorpayKey,
+        amount: orderData.amount,
+        currency: orderData.currency || 'INR',
+        name: 'Smart Canteen',
+        description: `Food Pickup Order (${items.length} items)`,
+        order_id: orderData.razorpay_order_id,
+        prefill: {
+          name: user?.name || user?.user_metadata?.name || 'Student',
+          email: user?.email || '',
+        },
+        theme: {
+          color: '#FB3640',
+        },
+        handler: async function (response) {
+          try {
+            // 4. Verify Payment Signature & Create Order on Server
+            const { data: verifyData, error: verifyErr } = await supabase.functions.invoke('verify-razorpay-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                cartItems: items,
+                totalAmount: totalPrice,
+              },
+            })
+
+            if (verifyErr || !verifyData?.success) {
+              let errMsg = verifyData?.error || verifyErr?.message || 'Payment signature verification failed.'
+              if (verifyErr && verifyErr.context) {
+                try {
+                  const body = await verifyErr.context.json()
+                  if (body?.error) errMsg = body.error
+                } catch {}
+              }
+              throw new Error(errMsg)
+            }
+
+            // Save order ID and QR token for realtime display and offline access
+            if (verifyData.orderId) {
+              localStorage.setItem('latest_order_id', verifyData.orderId)
+            }
+            if (verifyData.qrToken) {
+              localStorage.setItem('latest_qr_token', verifyData.qrToken)
+            }
+
+            clearCart()
+            toast.success('Payment verified & order placed!')
+            navigate('/student/qr')
+          } catch (verifyError) {
+            console.error('Verification error:', verifyError)
+            toast.error(verifyError.message || 'Payment verification failed.')
+          } finally {
+            setIsProcessing(false)
+            setIsPaymentModalOpen(false)
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false)
+            toast('Payment cancelled', { icon: 'ℹ️' })
+          },
+        },
+      }
+
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (response) {
+        toast.error(response.error?.description || 'Payment transaction failed.')
+        setIsProcessing(false)
+      })
+      rzp.open()
+
     } catch (error) {
-      toast.error(error.message || 'Payment failed. Please try again.')
-    } finally {
+      console.error('[CheckoutPage] Payment flow error:', error)
+      toast.error(error.message || 'Failed to initialize payment.')
       setIsProcessing(false)
-      setIsPaymentModalOpen(false)
     }
   }
 
@@ -182,4 +285,3 @@ export default function CheckoutPage() {
     </div>
   )
 }
-
