@@ -3,75 +3,120 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { Camera, StopCircle } from 'lucide-react'
 
 // ─── Constants ───────────────────────────────────────────────
-const SCAN_COOLDOWN_MS  = 3000
-const SCANNER_CONFIG    = { fps: 10, qrbox: { width: 250, height: 250 } }
-const AUTOSTART_DELAY_MS = 300
+const SCAN_COOLDOWN_MS   = 1500
+const SCANNER_CONFIG     = { 
+  fps: 20,
+  qrbox: { width: 250, height: 250 },
+  rememberLastUsedCamera: true
+}
+const AUTOSTART_DELAY_MS = 250
 
 export default function ScannerView({ onScanSuccess }) {
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState('')
-  const scannerRef     = useRef(null)
-  // Debounce: prevent the same QR from firing multiple callbacks
+  const scannerRef      = useRef(null)
+  const isMountedRef    = useRef(true)
   const lastScannedRef  = useRef(null)
   const scanCooldownRef = useRef(false)
+
+  const cleanupScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop()
+        }
+        await scannerRef.current.clear()
+      } catch (err) {
+        console.warn('[ScannerView] cleanup warning:', err)
+      }
+      scannerRef.current = null
+    }
+  }
 
   const startScanner = async () => {
     try {
       setError('')
+      const readerElem = document.getElementById('qr-reader')
+      if (!readerElem) return
+
+      // Clean up previous instance before creating a fresh one
+      await cleanupScanner()
+
+      // Create new instance with standard universal settings
+      scannerRef.current = new Html5Qrcode('qr-reader', false)
+
       const onScan = (decodedText) => {
-        // Ignore rapid-fire duplicate scans (same QR code read multiple times per second)
+        if (!isMountedRef.current) return
         if (scanCooldownRef.current) return
         if (lastScannedRef.current === decodedText) return
 
-        // Lock scanner for SCAN_COOLDOWN_MS to prevent toast spam
-        scanCooldownRef.current  = true
-        lastScannedRef.current   = decodedText
-        setTimeout(() => { scanCooldownRef.current = false }, SCAN_COOLDOWN_MS)
+        scanCooldownRef.current = true
+        lastScannedRef.current  = decodedText
+        setTimeout(() => { 
+          if (isMountedRef.current) scanCooldownRef.current = false 
+        }, SCAN_COOLDOWN_MS)
 
         if (onScanSuccess) onScanSuccess(decodedText)
       }
 
+      // Try Environment (Back) Camera First
       try {
-        await scannerRef.current.start({ facingMode: 'environment' }, SCANNER_CONFIG, onScan, () => {})
+        await scannerRef.current.start(
+          { facingMode: 'environment' },
+          SCANNER_CONFIG,
+          onScan,
+          () => {}
+        )
       } catch (envErr) {
+        console.warn('[ScannerView] Environment facingMode failed, querying camera device list:', envErr)
+        // Fallback: Query all available devices and pick the rear camera
         const devices = await Html5Qrcode.getCameras()
         if (devices && devices.length > 0) {
-          await scannerRef.current.start(devices[0].id, SCANNER_CONFIG, onScan, () => {})
+          const rearCam = devices.find(d => 
+            /back|rear|environment|main/i.test(d.label || '')
+          ) || devices[devices.length - 1] // usually rear camera is last on multi-cam phones
+
+          await scannerRef.current.start(
+            rearCam.id,
+            SCANNER_CONFIG,
+            onScan,
+            () => {}
+          )
         } else {
-          throw new Error('No cameras found.')
+          throw new Error('No camera found. Please allow camera permissions.')
         }
       }
-      setIsScanning(true)
+
+      if (isMountedRef.current) {
+        setIsScanning(true)
+      }
     } catch (err) {
-      console.error('[ScannerView] startScanner failed:', err)
-      setError('Camera access denied or unavailable.')
+      console.error('[ScannerView] startScanner error:', err)
+      if (isMountedRef.current) {
+        setIsScanning(false)
+        setError(err?.message || 'Camera permission denied or camera not available.')
+      }
     }
   }
 
   const stopScanner = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
-      try {
-        await scannerRef.current.stop()
-        setIsScanning(false)
-      } catch (err) {
-        console.error('[ScannerView] stopScanner failed:', err)
-      }
+    await cleanupScanner()
+    if (isMountedRef.current) {
+      setIsScanning(false)
     }
   }
 
   useEffect(() => {
-    scannerRef.current = new Html5Qrcode('qr-reader')
+    isMountedRef.current = true
 
-    // Auto-start after DOM element is fully painted
     const timer = setTimeout(() => {
       startScanner()
     }, AUTOSTART_DELAY_MS)
 
     return () => {
+      isMountedRef.current = false
       clearTimeout(timer)
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {})
-      }
+      cleanupScanner()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

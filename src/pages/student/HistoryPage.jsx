@@ -10,18 +10,25 @@ export default function HistoryPage() {
   const navigate = useNavigate()
   const { data: orders, isLoading, error } = useOrderHistory(user?.id)
 
-  const getStatusDisplay = (status) => {
+  const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
+
+  const getStatusDisplay = (status, createdAt) => {
+    const isExpired = (status === 'paid' || status === 'ready') && (Date.now() - new Date(createdAt).getTime() > EIGHT_HOURS_MS)
+    if (isExpired) {
+      return { text: 'Expired', color: 'bg-gray-100 text-gray-500 border border-gray-200', icon: null, isExpired: true }
+    }
+
     switch (status) {
       case 'paid':
-        return { text: 'Paid', color: 'bg-amber-100 text-amber-700', icon: <Clock className="w-3 h-3 mr-1" /> }
+        return { text: 'Paid', color: 'bg-amber-100 text-amber-700', icon: <Clock className="w-3 h-3 mr-1" />, isExpired: false }
       case 'ready':
-        return { text: 'Ready', color: 'bg-green-100 text-green-700', icon: <CheckCircle2 className="w-3 h-3 mr-1" /> }
+        return { text: 'Ready', color: 'bg-green-100 text-green-700', icon: <CheckCircle2 className="w-3 h-3 mr-1" />, isExpired: false }
       case 'collected':
-        return { text: 'Collected', color: 'bg-blue-100 text-blue-700', icon: <Check className="w-3 h-3 mr-1" /> }
+        return { text: 'Collected', color: 'bg-blue-100 text-blue-700', icon: <Check className="w-3 h-3 mr-1" />, isExpired: false }
       case 'cancelled':
-        return { text: 'Cancelled', color: 'bg-red-100 text-red-700', icon: null }
+        return { text: 'Cancelled', color: 'bg-red-100 text-red-700', icon: null, isExpired: false }
       default:
-        return { text: status, color: 'bg-gray-100 text-gray-700', icon: null }
+        return { text: status, color: 'bg-gray-100 text-gray-700', icon: null, isExpired: false }
     }
   }
 
@@ -84,7 +91,7 @@ export default function HistoryPage() {
         {!isLoading && orders?.length > 0 && (
           <div className="space-y-4 animate-fade-in-up">
             {orders.map((order) => {
-              const statusDisplay = getStatusDisplay(order.status)
+              const statusDisplay = getStatusDisplay(order.status, order.created_at)
               const dateObj = new Date(order.created_at)
               const formattedDate = format(dateObj, "MMM d, yyyy '•' h:mm a")
 
@@ -120,7 +127,7 @@ export default function HistoryPage() {
                     <span className="text-lg font-black text-imperial">₹{Number(order.total_amount).toFixed(2)}</span>
                   </div>
 
-                  {(order.status === 'paid' || order.status === 'ready') && order.qr_token && (
+                  {!statusDisplay.isExpired && (order.status === 'paid' || order.status === 'ready') && order.qr_token && (
                     <button 
                       onClick={() => handleViewQR(order)}
                       className="mt-4 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#000F08] to-[#1a1a1a] text-white py-3 rounded-xl font-bold text-sm shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all"
@@ -128,6 +135,12 @@ export default function HistoryPage() {
                       <QrCode className="w-4 h-4" />
                       View QR Code
                     </button>
+                  )}
+
+                  {statusDisplay.isExpired && (
+                    <div className="mt-4 w-full py-2.5 text-center text-xs font-semibold text-gray-400 bg-gray-50 rounded-xl border border-gray-100">
+                      Order Expired (8-Hour Pickup Window Closed)
+                    </div>
                   )}
                 </div>
               )

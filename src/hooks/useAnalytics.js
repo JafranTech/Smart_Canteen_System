@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase.js'
 import { startOfDay, format, parseISO } from 'date-fns'
 
 // ─── Constants ───────────────────────────────────────────────
-const REFETCH_INTERVAL_MS = 60_000
+const REFETCH_INTERVAL_MS = 15_000
 
 // ─── useDailyRevenue ─────────────────────────────────────────
 export function useDailyRevenue() {
@@ -89,8 +90,25 @@ export function useHourlyVolume() {
   })
 }
 
-// ─── useDashboardMetrics (legacy — kept for DashboardPage) ───
+// ─── useDashboardMetrics (With Live Realtime Sync) ───────────
 export function useDashboardMetrics() {
+  const queryClient = useQueryClient()
+
+  // Realtime subscription: Instantly update Dashboard metrics when any order is created or updated
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin_dashboard_realtime_metrics')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard_metrics'] })
+        queryClient.invalidateQueries({ queryKey: ['analytics'] })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [queryClient])
+
   return useQuery({
     queryKey: ['admin', 'dashboard_metrics'],
     queryFn: async () => {

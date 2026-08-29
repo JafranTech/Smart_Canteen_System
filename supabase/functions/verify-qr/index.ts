@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
-const ORDER_EXPIRY_HOURS = 4
+const ORDER_EXPIRY_HOURS = 8
 const ORDER_SELECT = `
   *,
   profiles!orders_student_id_fkey (name, college_id),
@@ -190,13 +190,15 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // 7. Check expiration (4-hour window)
+    // 7. Check expiration (8-hour window)
     const orderDate = new Date(order.created_at)
     const diffHours = (Date.now() - orderDate.getTime()) / (1000 * 60 * 60)
     if (diffHours > ORDER_EXPIRY_HOURS) {
       await logFraud(order.id, "expired_order", `Order is ${Math.round(diffHours)}h old (exceeds ${ORDER_EXPIRY_HOURS}h limit)`)
+      // Automatically update status to cancelled in database
+      await adminClient.from("orders").update({ status: "cancelled" }).eq("id", order.id)
       return new Response(
-        JSON.stringify({ valid: false, reason: "expired_order", order }),
+        JSON.stringify({ valid: false, reason: "expired_order", order: { ...order, status: "cancelled" } }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
     }

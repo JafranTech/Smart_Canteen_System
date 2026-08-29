@@ -18,7 +18,14 @@ export default function MenuPage() {
 
   const activeOrders = useMemo(() => {
     if (!orders || orders.length === 0) return []
-    return orders.filter((o) => o.status === 'paid' || o.status === 'ready')
+    const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
+    const now = Date.now()
+    return orders.filter((o) => {
+      const isPendingPickup = o.status === 'paid' || o.status === 'ready'
+      if (!isPendingPickup) return false
+      const isFresh = now - new Date(o.created_at).getTime() < EIGHT_HOURS_MS
+      return isFresh
+    })
   }, [orders])
 
   const [searchQuery, setSearchQuery] = useState('')

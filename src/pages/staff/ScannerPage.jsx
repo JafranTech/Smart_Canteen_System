@@ -18,14 +18,16 @@ export default function ScannerPage() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [fraudAlert, setFraudAlert] = useState(null)
 
-  // Live active orders count (status: 'paid' | 'ready')
+  // Live active orders count (status: 'paid' | 'ready' within 8 hours)
   const { data: activeOrders } = useQuery({
     queryKey: ['active_orders_count'],
     queryFn: async () => {
+      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString()
       const { data, error } = await supabase
         .from('orders')
         .select('id, status')
         .in('status', ['paid', 'ready'])
+        .gte('created_at', eightHoursAgo)
       if (error) return []
       return data || []
     },
@@ -61,10 +63,14 @@ export default function ScannerPage() {
     // Only verify if we are not already showing a result or alert
     if (scannedOrder || isVerifying || isSuccess || fraudAlert) return
 
+    // Instant haptic feedback (like GPay)
+    try { navigator.vibrate?.(50) } catch {}
+
     // Pass user.id to verifyQR so it can log fraud attempts
     const result = await verifyQR(decodedText, user?.id)
     
     if (!result.valid) {
+      try { navigator.vibrate?.([100, 50, 100]) } catch {}
       setFraudAlert({
         reason: result.reason,
         message: getFraudMessage(result.reason),

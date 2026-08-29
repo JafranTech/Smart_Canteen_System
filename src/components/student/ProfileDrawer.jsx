@@ -97,11 +97,14 @@ function MonthFilter({ selectedMonth, onSelect }) {
 // ─── Sub-component: Order Card ────────────────────────────────
 function OrderCard({ order, onClose }) {
   const navigate = useNavigate()
-  const statusColor = STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-700'
-  const statusLabel = STATUS_LABELS[order.status] || order.status
+  const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000
+  const isExpired = (order.status === 'paid' || order.status === 'ready') && (Date.now() - new Date(order.created_at).getTime() > EIGHT_HOURS_MS)
+
+  const statusColor = isExpired ? 'bg-gray-100 text-gray-500' : (STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-700')
+  const statusLabel = isExpired ? 'Expired' : (STATUS_LABELS[order.status] || order.status)
   const date = format(new Date(order.created_at), 'dd MMM yyyy')
   const shortId = order.id.slice(0, 8).toUpperCase()
-  const canViewQR = (order.status === 'paid' || order.status === 'ready') && order.qr_token
+  const canViewQR = !isExpired && (order.status === 'paid' || order.status === 'ready') && order.qr_token
 
   const itemLine = order.order_items
     ?.map(i => `${i.quantity}x ${i.menu_items?.name || 'Item'}`)

@@ -56,6 +56,7 @@ export default function ActiveOrdersPage() {
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ['active_orders'],
     queryFn: async () => {
+      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString()
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -64,6 +65,7 @@ export default function ActiveOrdersPage() {
           order_items (quantity, menu_items (name))
         `)
         .in('status', ['paid', 'ready'])
+        .gte('created_at', eightHoursAgo)
         .order('created_at', { ascending: false })
 
       if (error) throw new Error('Unable to load active orders. Please refresh.')
