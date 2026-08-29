@@ -50,7 +50,7 @@ const STUDENT_PASSWORD = process.env.STUDENT_PASSWORD || ''
 async function runPaperBenchmarks() {
   console.log('=====================================================================')
   console.log('   SMART CANTEEN SYSTEM - ACADEMIC RESEARCH BENCHMARK SUITE')
-  console.log('   N = 40  |  7 sub-categories  |  40 test vectors')
+  console.log('   N = 35  |  7 sub-categories  |  35 test vectors')
   console.log('=====================================================================\n')
 
   // Validate credentials
@@ -390,7 +390,7 @@ async function runPaperBenchmarks() {
   }
 
   console.log('\n=====================================================================')
-  console.log('                 PUBLICATION RESULTS SUMMARY  (N=40)')
+  console.log('                 PUBLICATION RESULTS SUMMARY  (N=35)')
   console.log('=====================================================================')
   console.log(`Total Test Vectors:   ${results.total}`)
   console.log(`True Positives (TP):  ${results.tp}   (genuine, correctly accepted)`)
@@ -426,7 +426,7 @@ async function runPaperBenchmarks() {
     console.warn('\n  These results are INVALID for publication.')
     console.warn('  Ensure real paid/collected orders exist in the DB and re-run.\n')
   } else {
-    console.log('All 40 tests ran against real system calls. Results are publication-ready.')
+    console.log('All 35 tests ran against real system calls. Results are publication-ready.')
   }
 
   // ==========================================================================
